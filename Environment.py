@@ -30,6 +30,7 @@ class Environment:
             self.stock_file = next(self.stock_file_list)
             # Open Stocks, historical data, and drop [date, name]
             self.df = pd.read_csv(self.stock_path + self.stock_file).drop(["Name", "date"], axis=1)
+            self.df.diff()
             self.df.dropna()
             # Reset episode number because of new episode and dequeu for taking steps in future
             self.step_num = 0
