@@ -1,68 +1,101 @@
-# from tensorflow.nn import rnn
-import tensorflow as tf
+version = "V1"
+
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
+from torch.distributions import Categorical
+
 import numpy as np
 
-# Parameters
-n_features = 5
-n_actions = 3
-n_days = 30
-# Hyperparameters
+episode_reward_decay = .95
+state_size = 5
+action_size = 3
+save_model_path = "E:\Documents\Code\Python\Data Science\Finance\Stock Market Bot\Saved_Models\V1_5LayerTorch\checkpoint_{}.model".format(version)
 learning_rate = 1e-4
-model_path = "/model/"
+gamma = .95 # Decay rate of rewards
+resume = True
+action_mapper = {
+    0: 'hold',
+    1: 'buy',
+    2: 'sell'
+}
 
-graph1 = tf.Graph()
-with graph1.as_default():
-    X = tf.placeholder(dtype=tf.float32, shape=[None, n_days, n_features], name="Input_Data")
-    rnn_cell = tf.contrib.rnn.BasicLSTMCell( 256, reuse=tf.AUTO_REUSE, name="LSTM_Cell")
-    r_outputs, states = tf.nn.dynamic_rnn(rnn_cell, X, dtype=tf.float32)
-    a1 = tf.layers.dense(r_outputs, 128, activation=tf.nn.relu, name='Activation_1',  reuse=tf.AUTO_REUSE)
-    dropout1 = tf.layers.dropout(a1, rate=.5, training=True, name="Dropout_1")
-    a2 = tf.layers.dense(dropout1, 64, activation=tf.nn.relu, name="Activation_2",  reuse=tf.AUTO_REUSE)
-    dropout2 = tf.layers.dropout(a2, rate=.5, training=True, name="Dropout_2")
-    a3 = tf.layers.dense(dropout2, 32, activation=tf.nn.relu, name="A3",  reuse=tf.AUTO_REUSE)
-    a4 = tf.layers.dense(a3, n_actions, name="A4",  reuse=tf.AUTO_REUSE)[:,1]
-    outputs = tf.nn.softmax(a4, name="Outputs")
-    choice = tf.argmax(outputs, axis=1, name="Choice")[0]
+torch.set_default_tensor_type('torch.cuda.FloatTensor')
 
-    ## Training Procedur
-    rewards = tf.placeholder(shape=[None], dtype=tf.float32, name="Rewards")
-    actions = tf.placeholder(shape=[None], dtype=tf.int32, name="Actions")
+class Policy(nn.Module):
+    def __init__(self):
+        super(Policy, self).__init__()
+
+        self.layer1 = nn.Linear(state_size, 64)
+        self.layer2 = nn.Linear(64, 32)
+        self.layer3 = nn.Linear(32, 64)
+        self.layer4 = nn.Linear(64, 16)
+        self.layer5 = nn.Linear(16, action_size)
+
+        self.action_probs = []
+        self.rewards = []
+
+    def forward(self, x):
+        x = F.relu(self.layer1(x))
+        x = F.relu(self.layer2(x))
+        x = F.relu(self.layer3(x))
+        x = F.relu(self.layer4(x))
+        action_score = F.relu(self.layer5(x))
+        return F.softmax(action_score, dim=1)
+
+def select_action(state):
+    # Reformat State shape
+    state = torch.from_numpy(state.values).float().unsqueeze(0).cuda()
+    probs = policy.forward(state) # Run Forward prop
+    m = Categorical(probs) # Create normalized distribution
+    action = m.sample() # Choose action
+    policy.action_probs.append(m.log_prob(action)) # Add distribution to stored for episode
+    return action.item()
+
+def finish_episode():
+    R = 0 # Episode reward holder
+    policy_loss = []
     
-    # One hot array of actions
-    one_hot_actions = tf.one_hot(actions, n_actions)
-    cross_entropy = tf.nn.softmax_cross_entropy_with_logits_v2(logits=a4, labels=one_hot_actions)
+    # Deprecation of rewarsd over time
+    rewards = []
+    for r in policy.rewards[::-1]:
+        R= r + gamma * R
+        rewards.insert(0, R)
     
-    loss = tf.reduce_mean(cross_entropy * rewards, name="Loss")
-    
-    # Create op to update gradients
-    optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(loss)
-    #update_gradients = optimizer.apply_gradients(zip(gradients_to_apply, tf.trainable_variables()))
+    rewards = torch.tensor(rewards).cuda()
+    # Normalization of rewards
+    rewards = (rewards - rewards.mean()) / (rewards.std() + 1e-7)
 
-    # Saver
-    saver = tf.train.Saver(max_to_keep=5)
+    # Compute loss
+    for action_prob, reward in zip(policy.action_probs, torch.cuda.FloatTensor(rewards)):
+        policy_loss.append(-action_prob * reward)
 
-discount_rate = .95
-# def save(self, sess, episode):
-#     save_path = saver(sess, model_path, global_step=episode)
-def discount_normalize_rewards(rewards):
-    discounted_rewards = np.zeros_like(rewards)
-    total_rewards = 0
+    optimizer.zero_grad()
+    policy_loss = torch.cat(policy_loss).sum()
+    policy_loss.backward()
+    optimizer.step()
 
-    for i in reversed(range(len(rewards))):
-        total_rewards = total_rewards *  discount_rate + rewards[i]
-        discounted_rewards[i] = total_rewards
-    discounted_rewards -= np.mean(discounted_rewards)
-    discounted_rewards /= np.std(discounted_rewards)
-    print(discounted_rewards)
-    return discounted_rewards
+    del policy.rewards[:]
+    del policy.action_probs[:]
 
-def reshape_state(state):
-    return np.array(state).reshape(-1, n_days, n_features)
+def save_model():
+    torch.save(policy.state_dict(), save_model_path)
 
-
-def get_action_sample():
-    return {
+def generate_action_call(action_key, amount=10):
+    action_val = action_mapper[action_key]
+    action = {
         "buy": 0,
         "sell": 0
     }
+    if action != "hold":
+        action[action_val] = amount
+    return action
 
+
+policy = Policy().cuda()
+
+if resume:
+    policy.load_state_dict(torch.load(save_model_path))
+
+optimizer = optim.Adam(policy.parameters(), lr=learning_rate)

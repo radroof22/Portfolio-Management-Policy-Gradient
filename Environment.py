@@ -12,7 +12,7 @@ class Environment:
     HISTORICAL_DAY = 30
     portfolio = None # of type deqeue
     state = None # Of type Deque
-    hold_reward = .1
+    hold_reward = .01
     days_for_stock = 5000
 
     def __init__(self, stock_iteration_amounts:int):
@@ -34,10 +34,11 @@ class Environment:
             self.df.dropna()
             # Reset episode number because of new episode and dequeu for taking steps in future
             self.step_num = 0
-            self.agent_balance = 20000 # Reset agent account
+            self.reset_episode_variables()
             self._reset_state_and_portfolio()
             # Load latest stock data
             self._next_state()
+            return self.state
         except StopIteration:
             # Finished with all stock datasets that were predefined
             return True
@@ -117,6 +118,10 @@ class Environment:
         """ Reset Local State Variable """
         self.state = deque()
         self.portfolio = deque()
+    def reset_episode_variables(self):
+        """ Reset Agent Balance """
+        self.agent_balance = 20000 # Reset agent account
+        portfolio = None
 
     """ Checkers """
     def _is_portfolio_is_empty(self):
