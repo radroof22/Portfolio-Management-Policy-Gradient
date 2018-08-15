@@ -30,39 +30,40 @@ class Environment:
             self.stock_file = next(self.stock_file_list)
             # Open Stocks, historical data, and drop [date, name]
             self.df = pd.read_csv(self.stock_path + self.stock_file).drop(["Name", "date"], axis=1)
-            self.df.diff()
-            self.df.dropna()
+            self.df = self.df.diff() 
+            self.df.dropna(inplace=True)
             # Reset episode number because of new episode and dequeu for taking steps in future
             self.step_num = 0
             self.reset_episode_variables()
             self._reset_state_and_portfolio()
-            # Load latest stock data
-            self._next_state()
-            return self.state
         except StopIteration:
             # Finished with all stock datasets that were predefined
             return True
     
-    def step(self, action={"buy":0, "sell":0}):
+    def step(self, action):
+        # action={"buy":0, "sell":0}
         """ Takes Action and Returns Next State and Reward """
         self.step_num += 1 # iterate step count
         done = self._next_state() # Iterate to next day
-        
+        reward = 0
         if self.agent_balance < 0: done= True
         if not done:
             # Handle Buying
-            if action["buy"] > 0: self._buy(action["buy"])
+            if action["buy"] > 0:
+                reward = 0.1
+                self._buy(action["buy"])
             # Create Reward: (Sell Price - Purchase Price) * NumberOfShares
-            reward = (self._latest_price() - self.portfolio[0][0]) * action["sell"] if action["sell"] > 0 and len(self.portfolio) > 0 else self.hold_reward if len(self.portfolio) else 0
-            # Handle Selling
-            if action["sell"] > 0: self._sell(action["sell"])
-        else:
-            reward = 0
             
+
+            # Handle Selling
+            elif action["sell"] > 0: 
+                reward = self._sell(action["sell"])
+        
+        df = self.state.dropna()
         # First In First Out
         return self.state, reward, done # state, reward, done
 
-    def _sell(self, num_to_sell):
+    def _sell(self, num_to_sell, c_profit=0):
         """ Sell Stock and Obtain Reward. Uses FIFO for sales """
         # If no stocks are owned, don't bother
         if len(self.portfolio) == 0:
@@ -76,19 +77,21 @@ class Environment:
             # Not all vals in entry were used up
             # Update account balance
             self.agent_balance += num_to_sell * curr_price
-            return 
+            c_profit = num_to_sell * curr_price
         elif entry[1] == 0:
             # Update account balance
             self.agent_balance += num_to_sell * curr_price
+            c_profit = num_to_sell * curr_price
             # Perfect fit for sale
             self.portfolio.popleft()
-            return 
         elif entry[1] < 0:
             # Update account balance
             self.agent_balance += (num_to_sell +entry[1]) * curr_price
+            temp_c_prof = (num_to_sell +entry[1]) * curr_price
             # Still more to sell
             self.portfolio.popleft()
-            self._sell(np.absolute(entry[1]))
+            self._sell(np.absolute(entry[1]), c_profit=temp_c_prof)
+        return c_profit
     def _buy(self, num_to_buy):
         """ Purchases Stocks and Places them in Portfolio Class """
         stock_price = self._latest_price() # Latest day
@@ -107,6 +110,7 @@ class Environment:
 
     def _next_state(self):
         """ Gets Next State from Dataset """
+        
         # If this is the first step the agent has taken for this episode
         if len(self.df.iloc[self.step_num+1:self.step_num+1+self.HISTORICAL_DAY]) < 30: return True
         if self.step_num >= self.days_for_stock: return True
@@ -120,8 +124,11 @@ class Environment:
         self.portfolio = deque()
     def reset_episode_variables(self):
         """ Reset Agent Balance """
+        # Load latest stock data
+        self._next_state()
         self.agent_balance = 20000 # Reset agent account
         portfolio = None
+        return self.state
 
     """ Checkers """
     def _is_portfolio_is_empty(self):
