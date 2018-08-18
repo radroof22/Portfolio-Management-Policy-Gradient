@@ -124,7 +124,7 @@ class Policy(nn.Module):
 
 
 def train(resume=True):    
-    # Initiating Policys
+    # Initiating Policysc
     policy = Policy().cuda()
 
     if resume:
@@ -140,7 +140,7 @@ def train(resume=True):
         env.load_stock() #Load the stock into the environment
         print("*"*8 + str(env.stock_file) + "*"*8)
         for _ in range(session_on_stock): # number of session with one stock
-            state = env.reset_episode_variables()
+            state = env.reset()
 
             episode_reward = 0
             for _ in range(historical_days): # Days to trade with stock
@@ -159,6 +159,13 @@ def train(resume=True):
             #     print(i.data)
             if epoch % 10:
                 print("Episode Reward: {}".format(episode_reward))
+                if episode_reward == 0:
+                    print(policy.episode_logs['reward'])
+                    print(policy.episode_logs["action"])
+                    print(env.stock_file)
+                    import sys
+                    sys.exit()
+
                 if episode_reward > reward_treshold:
                     policy.save_model(epoch+1)
                     print("Solved!!! Model is saving and has passed the assigned accuracy")
@@ -175,13 +182,16 @@ def test():
 
     for trial in range(n_trials):
         env.load_stock()
+        print("{}".format(env.stock_file))
         trial_reward = 0
-        state = env.reset_episode_variables()
+        state = env.reset()
         for n_step in range(historical_days):
             
             action = policy.select_action(state.values) # Choose Action
+            
             action_call = policy.generate_action_call(action)
             state, reward, done = env.step(action_call) # Take Action
+            # print("{} \t {} \t {} \t {}".format(action_call, reward, env.portfolio,state.iloc[len(state)-1]))
             trial_reward += reward
         total_trial_rewards.append(trial_reward)
         if trial % 10 == 0:
@@ -190,4 +200,17 @@ def test():
     print("Average: {}\t STD: {}".format(np.mean(np_total_rewards), np.std(np_total_rewards)))
 
 if __name__ == "__main__":
-    train(True)
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("runTime", help="What function do you want to run on the model: 1 (Train New), 2 (Resume Training), 3 (Test)", type=int)
+    args = parser.parse_args()
+    runTime = args.runTime
+    if runTime == 1:
+        train()
+    elif runTime == 2:
+        train(True)
+    elif runTime == 3:
+        test()
+    else:
+        raise "Unknown Runtime: Try again."
+    

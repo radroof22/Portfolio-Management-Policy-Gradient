@@ -30,11 +30,10 @@ class Environment:
             self.stock_file = next(self.stock_file_list)
             # Open Stocks, historical data, and drop [date, name]
             self.df = pd.read_csv(self.stock_path + self.stock_file).drop(["Name", "date"], axis=1)
-            self.df = self.df.diff() 
-            self.df.dropna(inplace=True)
+            
             # Reset episode number because of new episode and dequeu for taking steps in future
             self.step_num = 0
-            self.reset_episode_variables()
+            self.reset()
             self._reset_state_and_portfolio()
         except StopIteration:
             # Finished with all stock datasets that were predefined
@@ -59,9 +58,11 @@ class Environment:
             elif action["sell"] > 0: 
                 reward = self._sell(action["sell"])
         
-        df = self.state.dropna()
+        
+        state = self.state.diff()
+        state.dropna(inplace=True)
         # First In First Out
-        return self.state, reward, done # state, reward, done
+        return state, reward, done # state, reward, done
 
     def _sell(self, num_to_sell, c_profit=0):
         """ Sell Stock and Obtain Reward. Uses FIFO for sales """
@@ -91,7 +92,7 @@ class Environment:
             # Still more to sell
             self.portfolio.popleft()
             self._sell(np.absolute(entry[1]), c_profit=temp_c_prof)
-        return c_profit
+        return c_profit if purchase_price < curr_price else - c_profit
     def _buy(self, num_to_buy):
         """ Purchases Stocks and Places them in Portfolio Class """
         stock_price = self._latest_price() # Latest day
@@ -114,21 +115,24 @@ class Environment:
         # If this is the first step the agent has taken for this episode
         if len(self.df.iloc[self.step_num+1:self.step_num+1+self.HISTORICAL_DAY]) < 30: return True
         if self.step_num >= self.days_for_stock: return True
-        self.state = self.df.iloc[self.step_num:self.step_num+self.HISTORICAL_DAY]
+        self.state = self.df.iloc[self.step_num:self.step_num+self.HISTORICAL_DAY+1]
         ## if len(self.state) < 30: print("IOGSDYGIOHIOSDGHIODGHIOSDGHIO") 
         return False
 
     def _reset_state_and_portfolio(self):
         """ Reset Local State Variable """
-        self.state = deque()
+        self.state = None
         self.portfolio = deque()
-    def reset_episode_variables(self):
+    def reset(self):
         """ Reset Agent Balance """
         # Load latest stock data
         self._next_state()
         self.agent_balance = 20000 # Reset agent account
         portfolio = None
-        return self.state
+
+        state = self.state.diff()
+        state.dropna(inplace=True)
+        return state
 
     """ Checkers """
     def _is_portfolio_is_empty(self):
