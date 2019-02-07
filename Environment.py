@@ -6,7 +6,7 @@ from collections import deque
 
 
 class Environment:
-    stock_path = os.getcwd() + "\\Data\\Individual_Stocks_5yr\\"
+    stock_path = os.getcwd() + "\\Data\\sandp500\\individual_stocks_5yr\\individual_stocks_5yr\\"
     agent_balance = 20000
     step_num = 0
     HISTORICAL_DAY = 30
@@ -86,6 +86,9 @@ class Environment:
             - Reward as the difference between the current price
                 and the price you are selling at right now
         """
+        # Make sure they are not trying to sell nothing
+        assert num_to_sell != 0
+        
         # If no stocks are owned, don't bother
         if len(self.portfolio) == 0:
             return 0
@@ -95,6 +98,9 @@ class Environment:
         # Latest day price
         curr_price = self._latest_price() 
         
+        # Update user Account
+        self.agent_balance += float(num_to_sell) * curr_price
+
         # For each of the entries in profolio
         for entry in self.portfolio:
             # Calculate the reward
@@ -110,20 +116,20 @@ class Environment:
         Args:
             - num_to_buy: The number of shares the bot wants to purchase
         """
-        # Get Latest day prices
-        stock_price = self._latest_price() 
-
-        if self.agent_balance - float(num_to_buy) * stock_price < 0:
-            return
-        
-        # Update account balance
-        self.agent_balance -= float(num_to_buy) * stock_price
-        
         # Make sure they are not trying to buy nothing
         assert num_to_buy != 0
 
+        # Get Latest day prices
+        curr_price = self._latest_price() 
+
+        if self.agent_balance - float(num_to_buy) * curr_price < 0:
+            return
+        
+        # Update account balance
+        self.agent_balance -= float(num_to_buy) * curr_price
+
         # Update transaction report for the agent
-        self.portfolio.append([stock_price, num_to_buy])
+        self.portfolio.append([curr_price, num_to_buy])
 
     def _latest_price(self, n=-1):
         """ 

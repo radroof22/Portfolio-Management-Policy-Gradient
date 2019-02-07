@@ -52,8 +52,6 @@ class TestCases(unittest.TestCase):
         })
         sell_price = env._latest_price(n=-1)
         est_reward = (sell_price - purchase_price)  * 3
-        #print("Returned: {}".format(reward))
-        #print("Estimated: {}".format(est_reward))
         self.assertEqual(reward, est_reward, "Rewards are Estimated Correctly")
 
     def test_early_iteration_stop(self):
