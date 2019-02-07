@@ -4,6 +4,7 @@ import torch.nn.functional as F
 import numpy as np
 from torch.distributions import Categorical
 from Environment import Environment
+import pickle
 
 version = "V2"
 save_model_path = "E:\Documents\Code\Python\Data Science\Finance\Stock Market Bot\Saved_Models\{}\checkpoint_{}.model".format(version, version)
@@ -16,7 +17,7 @@ historical_days = 30
 reward_treshold = 5250
 learning_rate = 1e-4
 n_stocks = 7500
-session_on_stock = 10
+session_on_stock = 25
 ###############################################
 
 torch.set_default_tensor_type('torch.cuda.FloatTensor')
@@ -114,24 +115,25 @@ class Policy(nn.Module):
         self.episode_logs = {"action":[], "reward": []}
     
     def save_model(self, epoch):                                                                                                                                                             
-        state = {
+        '''state = {
             "epoch": epoch+1,
             "state_dict": self.state_dict(),
             "optim_dict": self.optimizer.state_dict()
         }
-        torch.save(state, save_model_path)
-    
+        torch.save(state, save_model_path)'''
+        with open("./Saved_Models/V2/checkpoint.pickle", "wb") as f:
+            pickle.dump(self, f)
 
 
-def train(resume=True):    
+def train(resume=True):
+    import statistics as stat  
     # Initiating Policysc
-    policy = Policy().cuda()
-
-    if resume:
-        state_dict = torch.load(save_model_path)                                                                                                                                                                     
-        policy.load_state_dict(state_dict["state_dict"])
-        policy.optimizer.load_state_dict(state_dict["optim_dict"])
     
+    rolling_reward = []
+    if resume:
+        policy = pickle.load(open("./Saved_Models/V2/checkpoint.pickle", "rb"))
+    else:
+        policy = Policy().cuda()
     policy.train()
 
     env = Environment(n_stocks)
@@ -144,6 +146,8 @@ def train(resume=True):
 
             episode_reward = 0
             for _ in range(historical_days): # Days to trade with stock
+                if state.shape[0] * state.shape[1] != historical_days * 5:
+                    break
                 action = policy.select_action(state.values)
                 action = policy.generate_action_call(action)
                 state, reward, done = env.step(action=action)
@@ -157,27 +161,33 @@ def train(resume=True):
             policy.save_model(epoch)
             # for i in policy.parameters():
             #     print(i.data)
-            if epoch % 10:
+            if epoch % 25:
                 print("Episode Reward: {}".format(episode_reward))
+                print("Rolling Reward: {}".format(stat.mean(rolling_reward)))
                 if episode_reward == 0:
-                    print(policy.episode_logs['reward'])
-                    print(policy.episode_logs["action"])
                     print(env.stock_file)
+                    b = env.load_stock()
+                    if b != None:
+                        import sys
+                        sys.exit()
+
+                if episode_reward == np.nan:
                     import sys
                     sys.exit()
 
                 if episode_reward > reward_treshold:
                     policy.save_model(epoch+1)
                     print("Solved!!! Model is saving and has passed the assigned accuracy")
-
+            
+            rolling_reward.append(episode_reward)
 def test():
     total_trial_rewards = []
     n_trials = 100
     env = Environment(n_trials)
     
     # Policy loading
-    policy = Policy().cuda()
-    policy.load_state_dict(torch.load(save_model_path)["state_dict"])
+    
+    policy = pickle.load(open("./Saved_Models/V2/checkpoint.pickle", "rb"))
     policy.eval()
 
     for trial in range(n_trials):
@@ -186,7 +196,8 @@ def test():
         trial_reward = 0
         state = env.reset()
         for n_step in range(historical_days):
-            
+            if state.values.shape != (historical_days, 5):
+                break
             action = policy.select_action(state.values) # Choose Action
             
             action_call = policy.generate_action_call(action)
@@ -206,7 +217,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     runTime = args.runTime
     if runTime == 1:
-        train()
+        train(False)
     elif runTime == 2:
         train(True)
     elif runTime == 3:

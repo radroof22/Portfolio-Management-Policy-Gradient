@@ -65,34 +65,18 @@ class Environment:
         return state, reward, done # state, reward, done
 
     def _sell(self, num_to_sell, c_profit=0):
-        """ Sell Stock and Obtain Reward. Uses FIFO for sales """
+        """ Sell Stock and Obtain Reward. Sells all of portfolio """
         # If no stocks are owned, don't bother
         if len(self.portfolio) == 0:
             return 0
+
+        reward = 0
         curr_price = self._latest_price() # Latest day price
-        entry = self.portfolio[0] # First Purchase
-        # Make sales
-        purchase_price, shares = entry[0], entry[1]
-        entry[1] -= num_to_sell # Take away `x` shares from portfolio entry
-        if entry[1] > 0:
-            # Not all vals in entry were used up
-            # Update account balance
-            self.agent_balance += num_to_sell * curr_price
-            c_profit = num_to_sell * curr_price
-        elif entry[1] == 0:
-            # Update account balance
-            self.agent_balance += num_to_sell * curr_price
-            c_profit = num_to_sell * curr_price
-            # Perfect fit for sale
-            self.portfolio.popleft()
-        elif entry[1] < 0:
-            # Update account balance
-            self.agent_balance += (num_to_sell +entry[1]) * curr_price
-            temp_c_prof = (num_to_sell +entry[1]) * curr_price
-            # Still more to sell
-            self.portfolio.popleft()
-            self._sell(np.absolute(entry[1]), c_profit=temp_c_prof)
-        return c_profit if purchase_price < curr_price else - c_profit
+        
+        for entry in self.portfolio:
+            reward += (curr_price - entry[0]) * entry[1]
+
+        return reward
     def _buy(self, num_to_buy):
         """ Purchases Stocks and Places them in Portfolio Class """
         stock_price = self._latest_price() # Latest day
