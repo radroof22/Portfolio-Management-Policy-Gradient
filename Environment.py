@@ -25,6 +25,14 @@ class Environment:
         self.stock_file_list =  (n for n in stock_list[:stock_iteration_amounts])
 
     def load_stock(self):
+        """
+        Load all the stocks into memory for the class
+        - Resets all the user accounts and other information
+        - Reads dataframe into `self.df`
+        
+        Returns:
+            - True: all stocks have been used
+        """
         try:
             # Get Next Entry in File List Generator
             self.stock_file = next(self.stock_file_list)
@@ -40,12 +48,17 @@ class Environment:
             return True
     
     def step(self, action):
-        # action={"buy":0, "sell":0}
-        """ Takes Action and Returns Next State and Reward """
+        """ 
+        Takes Action and Returns Next State and Reward
+            Args:
+                - action: int
+        """
         self.step_num += 1 # iterate step count
         done = self._next_state() # Iterate to next day
         reward = 0
+        # If the agent ran out of money, they are finished
         if self.agent_balance < 0: done= True
+        
         if not done:
             # Handle Buying
             if action["buy"] > 0:
@@ -65,31 +78,62 @@ class Environment:
         return state, reward, done # state, reward, done
 
     def _sell(self, num_to_sell, c_profit=0):
-        """ Sell Stock and Obtain Reward. Sells all of portfolio """
+        """ 
+        Sell Stock and Obtain Reward
+        - Liquidates the entire portfolio
+        
+        Returns:
+            - Reward as the difference between the current price
+                and the price you are selling at right now
+        """
         # If no stocks are owned, don't bother
         if len(self.portfolio) == 0:
             return 0
 
         reward = 0
-        curr_price = self._latest_price() # Latest day price
+
+        # Latest day price
+        curr_price = self._latest_price() 
         
+        # For each of the entries in profolio
         for entry in self.portfolio:
+            # Calculate the reward
             reward += (curr_price - entry[0]) * entry[1]
 
         return reward
     def _buy(self, num_to_buy):
-        """ Purchases Stocks and Places them in Portfolio Class """
-        stock_price = self._latest_price() # Latest day
+        """ 
+        Purchases Stocks and Places them in Portfolio Class
+        - Conducts the sale by updating agent balance
+        - Adds the shares to the porfolio
+
+        Args:
+            - num_to_buy: The number of shares the bot wants to purchase
+        """
+        # Get Latest day prices
+        stock_price = self._latest_price() 
+
         if self.agent_balance - float(num_to_buy) * stock_price < 0:
             return
+        
         # Update account balance
         self.agent_balance -= float(num_to_buy) * stock_price
-        # Update transaction report for the agent
+        
+        # Make sure they are not trying to buy nothing
         assert num_to_buy != 0
+
+        # Update transaction report for the agent
         self.portfolio.append([stock_price, num_to_buy])
 
     def _latest_price(self, n=-1):
-        """ Get Open Prices of Most Recent Day (Future Day)"""
+        """ 
+        Get Open Prices of Most Recent Day (Future Day) 
+        
+        Args:
+            n: How many days do you want (-1)
+        Returns:
+            - latest_price: Open Price on day
+        """
         #print(len(self.state))
         return self.state.iloc[n]["open"]
 
@@ -100,7 +144,6 @@ class Environment:
         if len(self.df.iloc[self.step_num+1:self.step_num+1+self.HISTORICAL_DAY]) < 30: return True
         if self.step_num >= self.days_for_stock: return True
         self.state = self.df.iloc[self.step_num:self.step_num+self.HISTORICAL_DAY+1]
-        ## if len(self.state) < 30: print("IOGSDYGIOHIOSDGHIODGHIOSDGHIO") 
         return False
 
     def _reset_state_and_portfolio(self):
@@ -108,10 +151,19 @@ class Environment:
         self.state = None
         self.portfolio = deque()
     def reset(self):
-        """ Reset Agent Balance """
+        """ 
+        Reset Agent Balance
+        - Resets agents account balancer
+        - Sets agents portfolio to empty
+        - returns 
+        Returns:
+            - one last observations
+        """
         # Load latest stock data
         self._next_state()
-        self.agent_balance = 20000 # Reset agent account
+
+        # Reset agent account
+        self.agent_balance = 20000 
         portfolio = None
 
         state = self.state.diff()
@@ -120,5 +172,8 @@ class Environment:
 
     """ Checkers """
     def _is_portfolio_is_empty(self):
+        """ 
+        Check if the porfolio is empty
+        """
         return len(self.portfolio) == 0
         
