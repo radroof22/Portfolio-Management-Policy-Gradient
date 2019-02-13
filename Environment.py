@@ -1,15 +1,21 @@
 import pandas as pd
+import random
+import os
 
 class Environment:
-    path = "./Data/sandp500/individual_stocks_5yr/individual_stocks_5yr/AAL_data.csv"
+    data_dir = "./Data/sandp500/individual_stocks_5yr/individual_stocks_5yr/"
     days = 30
     portfolio = {
         "shares": 0,
         "balance": 1000,
     }
+    stock_i = 0
 
     def __init__(self):
-        self.df = pd.read_csv(self.path).drop(["date", "Name"], axis=1)
+        self.stock_list = [s for s in os.walk(self.data_dir)][0][2]
+        random.shuffle(self.stock_list)
+        
+        
 
     def reset(self):
         """
@@ -21,13 +27,15 @@ class Environment:
         state : ndarray[self.days * 5]
             The latest stock prices for the timeframe
         """
+        self.df = pd.read_csv(self.data_dir + self.stock_list[self.stock_i]).drop(["date", "Name"], axis=1)
         self.i = 0
         state, _ = self._get_state()
-
         self.portfolio = {
             "shares": 0,
             "balance": 1000,
         }
+
+        self.stock_i += 1
 
         return state
 

@@ -10,11 +10,11 @@ from torch.autograd import Variable
 from torch.distributions import Categorical
 import numpy as np
 
-from Environment2 import Environment
+from Environment import Environment
 env = Environment()
 
 hparams = {
-    "learning_rate": 1e-3,
+    "learning_rate": 1e-4,
     "gamma": 0.99
 }
 
@@ -59,9 +59,9 @@ def format_action(action_in:list):
     max_action = torch.argmax(action_in, dim=-1)
     
     if max_action == 1:
-        action["buy"] = 1
+        action["buy"] = 10
     elif max_action == 2:
-        action["sell"] = 1
+        action["sell"] = 10
     else:
         action["hold"] = 1
 
@@ -78,12 +78,9 @@ def update_agent():
     # turn rewards to pytorch tensor and standardize
     rewards = torch.Tensor(rewards).cuda()
     rewards = (rewards - rewards.mean()) / (rewards.std() + 1e-10)
-
-    # TODO: LOGPROBS
     
     for log_prob, reward in zip(agent.saved_log_probs, rewards):
         policy_loss.append(-log_prob * reward)
-
     # optimize gradient
     optimizer.zero_grad()
     policy_loss = torch.cat(policy_loss).sum()
@@ -97,19 +94,17 @@ if LOAD:
     agent.load_state_dict(torch.load(OUTPUT_PATH))
 optimizer = optim.Adam(agent.parameters(), lr=hparams["learning_rate"])
 
+records = open("models/regular/rewards.csv", "w")
+
 if __name__ == "__main__":
-    
+    all_balances = []
     # running_reward = 10
-    for episode in range(1000):
+    for episode in range(500):
         state = env.reset() # Reset environment and record the starting state
         
         # Reset episode records
-        agent.ep_states = []
-        agent.ep_actions = []
         agent.ep_rewards = []
 
-        time = 0
-        running_reward = 10
         while True:
             
             # Step through environment using chosen action
@@ -120,23 +115,23 @@ if __name__ == "__main__":
 
             # Record Action and Reward reference to State
             agent.ep_rewards.append(reward)
-            
+
             # Check if done
             if done:
                 break
-            time += 1
 
         update_agent()
         
-        # Used to determine when the environment is solved.
-        running_reward = (running_reward * 0.99) + (time * 0.01)
-        
+        final_balance = env.portfolio["balance"]
+        records.write("{},{:.2f}\n".format(episode, final_balance))
+
+        all_balances.append(final_balance)    
 
         if episode % 50 == 0:
-                    print('Episode {}\tLast length: {:5d}\tAverage length: {:.2f}'.format(episode, time, running_reward))
+                    print('Episode {}\tLast Reward: {:.2f}\tRunning Reward: {:.2f}'.format(episode, final_balance, np.array(all_balances).mean() ))
                     torch.save(agent.state_dict(), OUTPUT_PATH)
-        if running_reward > 10000:
-                    print("Solved! Running reward is now {} and the last episode runs to {} time steps!".format(running_reward, time))
+        if np.array(all_balances).mean() > 2000:
+                    print("Solved! Reward is now {} and the average reward is {}".format(final_balance, np.array(all_balances).mean() ))
                     break
 
 
