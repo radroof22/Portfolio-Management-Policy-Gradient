@@ -124,7 +124,7 @@ class Environment:
         self.portfolio["shares"] += n_shares
         self.portfolio["balance"] -= curr_price * n_shares
         
-        return -curr_price * n_shares
+        return 10 # TODO: Implement No Purchase Cost
 
     def _sell(self, n_shares:int):
         """

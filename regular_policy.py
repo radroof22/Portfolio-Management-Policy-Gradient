@@ -1,4 +1,4 @@
-LOAD = True
+LOAD = False
 OUTPUT_PATH = "models/regular/model_001.pt"
 eps=1e-10
 
@@ -99,7 +99,7 @@ records = open("models/regular/rewards.csv", "w")
 if __name__ == "__main__":
     all_balances = []
     # running_reward = 10
-    for episode in range(500):
+    for episode in range(50):
         state = env.reset() # Reset environment and record the starting state
         
         # Reset episode records
@@ -127,11 +127,11 @@ if __name__ == "__main__":
 
         all_balances.append(final_balance)    
 
-        if episode % 50 == 0:
-                    print('Episode {}\tLast Reward: {:.2f}\tRunning Reward: {:.2f}'.format(episode, final_balance, np.array(all_balances).mean() ))
+        if episode % 1 == 0:
+                    print('Episode {}\tLast Reward: {:.2f}\tRunning Reward: {:.2f}'.format(episode, all_balances[-1], np.array(all_balances).mean() ))
                     torch.save(agent.state_dict(), OUTPUT_PATH)
         if np.array(all_balances).mean() > 2000:
-                    print("Solved! Reward is now {} and the average reward is {}".format(final_balance, np.array(all_balances).mean() ))
+                    print("Solved! Reward is now {} and the average reward is {}".format(all_balances[-1], np.array(all_balances).mean() ))
                     break
 
 
