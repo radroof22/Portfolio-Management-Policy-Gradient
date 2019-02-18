@@ -14,8 +14,6 @@ class Environment:
     def __init__(self):
         self.stock_list = [s for s in os.walk(self.data_dir)][0][2]
         random.shuffle(self.stock_list)
-        
-        
 
     def reset(self):
         """
@@ -27,7 +25,12 @@ class Environment:
         state : ndarray[self.days * 5]
             The latest stock prices for the timeframe
         """
-        self.df = pd.read_csv(self.data_dir + self.stock_list[self.stock_i]).drop(["date", "Name"], axis=1)
+        try:
+            self.df = pd.read_csv(self.data_dir + self.stock_list[self.stock_i]).drop(["date", "Name"], axis=1).dropna()
+        except IndexError:
+            print("Reset Stock List")
+            self.stock_i=0
+            self.df = pd.read_csv(self.data_dir + self.stock_list[self.stock_i]).drop(["date", "Name"], axis=1).dropna()
         self.i = 0
         state, _ = self._get_state()
         self.portfolio = {
@@ -68,13 +71,10 @@ class Environment:
             # Buy some shares
             reward = self._sell(action["sell"])
         else:
-            # Hold the stock
-            reward = 0
+            reward = self.calc_reward()
         
         state, done = self._get_state()
-        
-        
-
+        # print("BALANCE: %s" % self.portfolio["balance"])
         return state, reward, done
 
     def _get_state(self, move_day:bool=True):
@@ -124,7 +124,7 @@ class Environment:
         self.portfolio["shares"] += n_shares
         self.portfolio["balance"] -= curr_price * n_shares
         
-        return 10 # TODO: Implement No Purchase Cost
+        return self.calc_reward() 
 
     def _sell(self, n_shares:int):
         """
@@ -152,7 +152,19 @@ class Environment:
         self.portfolio["shares"] -= n_shares
         self.portfolio["balance"] += curr_price * n_shares
 
-        return curr_price * n_shares
+        return  self.calc_reward() 
+
+    def calc_reward(self):
+        """
+        Reward is calculated of of the PE ratio
+        
+        Returns:
+        - Reward: int
+        """
+        try:
+            return self.portfolio["balance"] / self.portfolio["shares"] # Reward for HOLD
+        except ZeroDivisionError:
+            return 0       
 
     @property
     def action_space(self):
