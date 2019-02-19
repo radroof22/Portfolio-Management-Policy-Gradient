@@ -8,3 +8,8 @@ Objective: Make it gain money not hold the portfolio
     - Buy: shares * price
     - Sell: shares *  price
     - **Result**: Fail
+2. PE Ratio
+    - Hold: PE Ratio
+    - Buy: PE Ratio
+    - Sell: PE Ratio
+    - **Result**: Development

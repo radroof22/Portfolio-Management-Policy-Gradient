@@ -7,7 +7,7 @@ class Environment:
     days = 30
     portfolio = {
         "shares": 0,
-        "balance": 1000,
+        "balance": 100000,
     }
     stock_i = 0
 
@@ -35,7 +35,7 @@ class Environment:
         state, _ = self._get_state()
         self.portfolio = {
             "shares": 0,
-            "balance": 1000,
+            "balance": 100000,
         }
 
         self.stock_i += 1
@@ -161,17 +161,20 @@ class Environment:
         Returns:
         - Reward: int
         """
-        try:
-            return self.portfolio["balance"] / self.portfolio["shares"] # Reward for HOLD
-        except ZeroDivisionError:
-            return 0       
+        if self.portfolio["shares"] == 0:
+            return 0
+        else:
+            return self.portfolio["balance"] / self.portfolio["shares"] 
+    
+    def net_change(self):
+        return (self.df.iloc[-1]["close"] - self.df.iloc[0]["close"]) / self.df.iloc[-1]["close"]
 
     @property
     def action_space(self):
         return 3 
     @property
     def observation_space(self):
-        return self.days * 5
+        return (self.days, 5)
 
 
 if __name__ == "__main__":
