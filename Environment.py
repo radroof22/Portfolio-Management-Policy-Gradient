@@ -166,6 +166,15 @@ class Environment:
     def net_change(self):
         return (self.df.iloc[-1]["close"] - self.df.iloc[0]["close"]) / self.df.iloc[-1]["close"]
 
+    def get_df(self):
+        """
+        Returns Dataframe of the Environment Currently
+
+        Returns
+        - df: pd.DataFrame
+        """
+        return self.df
+
     @property
     def action_space(self):
         return 3 
