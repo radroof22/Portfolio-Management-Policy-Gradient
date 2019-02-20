@@ -1,5 +1,5 @@
 LOAD = True
-OUTPUT_PATH = "models/regular/model_proper_1000k.pt" # _500Cash
+OUTPUT_PATH = "models/regular/model_proper_portfolio_value.pt" # _500Cash
 eps=1e-10
 
 import torch
@@ -96,7 +96,7 @@ def select_action(state):
         agent.policy_history = c.log_prob(action)[0][0]
     return action
 
-def format_action(action_list:list):
+def format_action(action_list:list, monitor=True):
     # print(action_in)
     action = {
         "hold": 0,
@@ -107,13 +107,13 @@ def format_action(action_list:list):
     
     if action_in == 1:
         action["buy"] = 10
-        episode_actions["buy"] += 1
+        if monitor: episode_actions["buy"] += 1
     elif action_in == 2:
         action["sell"] = 10
-        episode_actions["sell"] += 1
+        if monitor: episode_actions["sell"] += 1
     else:
         action["hold"] = 1
-        episode_actions["hold"] += 1
+        if monitor: episode_actions["hold"] += 1
 
     return action
 
@@ -152,7 +152,7 @@ optimizer = optim.Adam(agent.parameters(), lr=hparams["learning_rate"])
 records = open("models/regular/rewards.csv", "w")
 
 if __name__ == "__main__":
-    all_balances = []
+    all_rewards = []
     
     for episode in range(8000):
         state = env.reset() # Reset environment and record the starting state
@@ -173,37 +173,29 @@ if __name__ == "__main__":
 
             agent.reward_episode.append(reward)
 
-        
+        all_rewards.append(reward)
         update_agent()
-        
-        
-
-        final_balance = env.portfolio["balance"]
-        records.write("{},{:.2f}\n".format(episode, final_balance))
-
-        all_balances.append(final_balance)    
+          
 
         if episode % 25 == 0:
             print("#" * 60)
 
+            # Stock Statistics and Preformance
             env_change = env.net_change()
-            agent_change = (100000 - all_balances[-1]) / 100000
-            print("Environment: {} \t Agent: {} \t Difference: {}".format(env_change, agent_change, (agent_change - env_change)/ env_change ))
-            print('Episode {}\tLast Balance: {:.2f}\tRunning Reward: {:.2f}'.format(episode, final_balance, np.array(all_balances).mean() ))
+            cash_change = (all_rewards[-1] - 100000 ) / 100000
+            print("CHANGES:: \t Environment: {} \t Agent: {} \t Difference: {}".format(env_change, cash_change, (cash_change - env_change)/ env_change ))
+            
+            # Portfolio Preformance
+            print(f"Episode {episode} \t Last Balance: {all_rewards[-1]} \t Running Reward: {np.array(all_rewards).mean()}")
 
-            # keys = list(set(agent.reward_episode))
-            # freq = {}
-            # for key in keys:
-            #     freq[key] = 0
-            # for val in agent.reward_episode:
-            #     freq[val] += 1
-            # print(freq)
+            # What actions the model preformed
             print(episode_actions)
+            
 
             print("#" * 60)
             torch.save(agent.state_dict(), OUTPUT_PATH)
 
-        if np.array(all_balances).mean() > 2000:
-            print("Solved! Last Balance is now {} and the average reward is {}".format(final_balance, np.array(all_balances).mean() ))
+        if np.array(all_rewards).mean() > 2000000:
+            print("Solved! Last Balance is now {} and the average reward is {}".format(all_rewards[-1], np.array(all_rewards).mean() ))
             break
 

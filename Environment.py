@@ -161,10 +161,7 @@ class Environment:
         Returns:
         - Reward: int
         """
-        if self.portfolio["shares"] == 0:
-            return 0
-        else:
-            return self.portfolio["balance"] / self.portfolio["shares"] 
+        return self.portfolio["balance"] + self.portfolio["shares"] * self._get_state(move_day=False)[0].iloc[-1]["close"]
     
     def net_change(self):
         return (self.df.iloc[-1]["close"] - self.df.iloc[0]["close"]) / self.df.iloc[-1]["close"]
