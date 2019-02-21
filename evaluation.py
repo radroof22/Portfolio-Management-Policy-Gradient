@@ -7,12 +7,12 @@ env = Environment()
 
 # CONSTANTS
 MODEL_PATH = "models/regular/model_proper_portfolio_value.pt"
-N_TESTS = 2
+N_TESTS = 500
 
 agent = Agent().cuda()
 agent.load_state_dict(torch.load(MODEL_PATH))
 
-f = open("models/tests/model_proper_portfolio_value.csv", "w")
+f = open("models/tests/sharpe_analysis.csv", "w")
 
 if __name__ == "__main__":
     history = []
