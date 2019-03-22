@@ -1,5 +1,6 @@
 LOAD = True
-OUTPUT_PATH = "models/regular/model_proper_portfolio_value.pt" # _500Cash
+OUTPUT_PATH = "models/regular/model_INC.pt" # _500Cash
+record_file = "models/regular/rewards_INC.csv"
 eps=1e-10
 
 import torch
@@ -77,7 +78,6 @@ def select_action(state):
     
     c = Categorical(state)
     action = c.sample()
-    
     if torch.isnan(probs[0][0][0]):
         print(probs)
         print(list(agent.parameters()))
@@ -149,7 +149,7 @@ if LOAD:
     agent.load_state_dict(torch.load(OUTPUT_PATH))
 optimizer = optim.Adam(agent.parameters(), lr=hparams["learning_rate"])
 
-records = open("models/regular/rewards.csv", "w")
+records = open(record_file, "w")
 
 if __name__ == "__main__":
     all_rewards = []

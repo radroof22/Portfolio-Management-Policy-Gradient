@@ -3,7 +3,7 @@ import random
 import os
 
 class Environment:
-    data_dir = "./Data/sandp500/individual_stocks_5yr/individual_stocks_5yr/"
+    data_dir = "./Data/sandp500/individual_stocks_5yr/Eval/"
     days = 30
     portfolio = {
         "shares": 0,
@@ -26,11 +26,12 @@ class Environment:
             The latest stock prices for the timeframe
         """
         try:
-            self.df = pd.read_csv(self.data_dir + self.stock_list[self.stock_i]).drop(["date", "Name"], axis=1).dropna()
+            # print(self.stock_list[self.stock_i])
+            self.df = pd.read_csv(self.data_dir + self.stock_list[self.stock_i]).drop(["Date", "Name"], axis=1).dropna()
         except IndexError:
             print("Reset Stock List")
             self.stock_i=0
-            self.df = pd.read_csv(self.data_dir + self.stock_list[self.stock_i]).drop(["date", "Name"], axis=1).dropna()
+            self.df = pd.read_csv(self.data_dir + self.stock_list[self.stock_i]).drop(["Date", "Name"], axis=1).dropna()
         self.i = 0
         state, _ = self._get_state()
         self.portfolio = {
@@ -44,7 +45,7 @@ class Environment:
 
     def step(self, action:dict):
         """
-        Environmonet will simulate whatever action the agent takes. 
+        Environment will simulate whatever action the agent takes. 
 
         Parameters
         ----------
@@ -115,7 +116,7 @@ class Environment:
             This will be negative because of how you pay money to buy stock
         """
         
-        curr_price = self._get_state(move_day=False)[0].iloc[-1]["close"]
+        curr_price = self._get_state(move_day=False)[0].iloc[-1]["Close"]
         # Check that the total amount of money needed to buy is less 
         # than the amount of money available to the person
         if curr_price * n_shares > self.portfolio["balance"]: return 0
@@ -146,7 +147,7 @@ class Environment:
         # is actually owned by the agent
         if n_shares > self.portfolio["shares"]: return 0
         
-        curr_price = self._get_state(move_day=False)[0].iloc[-1]["close"]
+        curr_price = self._get_state(move_day=False)[0].iloc[-1]["Close"]
 
         # Deduct and Update portfolio
         self.portfolio["shares"] -= n_shares
@@ -161,10 +162,10 @@ class Environment:
         Returns:
         - Reward: int
         """
-        return self.portfolio["balance"] + self.portfolio["shares"] * self._get_state(move_day=False)[0].iloc[-1]["close"]
+        return self.portfolio["balance"] + self.portfolio["shares"] * self._get_state(move_day=False)[0].iloc[-1]["Close"]
     
     def net_change(self):
-        return (self.df.iloc[-1]["close"] - self.df.iloc[0]["close"]) / self.df.iloc[-1]["close"]
+        return (self.df.iloc[-1]["Close"] - self.df.iloc[0]["Close"]) / self.df.iloc[-1]["Close"]
 
     def get_df(self):
         """

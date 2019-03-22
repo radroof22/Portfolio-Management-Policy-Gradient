@@ -8,7 +8,7 @@ env = Environment()
 
 # CONSTANTS
 MODEL_PATH = "models/regular/model_proper_portfolio_value.pt"
-N_TESTS = 2
+N_TESTS = 1
 
 agent = Agent().cuda()
 agent.load_state_dict(torch.load(MODEL_PATH))
@@ -23,7 +23,7 @@ if __name__ == "__main__":
     buy_line = {}
     sell_line = {}
 
-    for episode in range(1):
+    for episode in range(N_TESTS):
         print("Episode {}".format(episode))
         
         episode_actions = {
@@ -34,6 +34,8 @@ if __name__ == "__main__":
         
         done = False
         step = 30
+        port_value = []
+
         while not done:
             
             # Step through environment using chosen action
@@ -44,17 +46,21 @@ if __name__ == "__main__":
 
             agent.reward_episode.append(reward)
             if action_dict["sell"] != 0:
-                sell_line[step] = state.iloc[-1]["close"]
+                sell_line[step] = state.iloc[-1]["Close"]
             if action_dict["buy"] != 0:
-                buy_line[step] = state.iloc[-1]["close"]
+                buy_line[step] = state.iloc[-1]["Close"]
             step += 1
+
+            port_value.append(env.portfolio["balance"])
 
         env_change = env.net_change()
         cash_change = (reward - 100000 ) / 100000
         history.append((reward, env_change, cash_change))
-
-    print(buy_line)
-    print(sell_line)
+    
+    print(env.stock_list[env.stock_i])
+    print("*"*30)
+    env_change = env.net_change()
+    print("Stock Appreciation: {}".format(env_change))
     print("Final Balance: {}".format(history))
     print(env.portfolio)
     # plt.plot([i for i in range(len(df))], df["open"] , color="green", label="Open")
@@ -63,7 +69,8 @@ if __name__ == "__main__":
     plt.title("Bot Trades")
     plt.plot(list(buy_line.keys()), list(buy_line.values()) , 'go-', label="Buy")
     plt.plot(list(sell_line.keys() ), list(sell_line.values()), 'ro-', label="Sell")
-    plt.plot(x_axis, df["close"] , color="black", label="Close")
+    plt.plot(x_axis, df["Close"] , color="black", label="Close")
+    
     plt.show()
         
 

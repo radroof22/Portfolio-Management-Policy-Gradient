@@ -7,12 +7,12 @@ env = Environment()
 
 # CONSTANTS
 MODEL_PATH = "models/regular/model_proper_portfolio_value.pt"
-N_TESTS = 500
+N_TESTS = 25
 
 agent = Agent().cuda()
-agent.load_state_dict(torch.load(MODEL_PATH))
+agent.load_state_dict(torch.load(MODEL_PATH))   
 
-f = open("models/tests/sharpe_analysis.csv", "w")
+f = open("models/tests/sharpe_analysis_final.csv", "w")
 
 if __name__ == "__main__":
     history = []
@@ -39,11 +39,11 @@ if __name__ == "__main__":
 
         env_change = env.net_change()
         cash_change = (reward - 100000 ) / 100000
-        history.append((reward, env_change, cash_change))
+        history.append((reward, env_change, cash_change, env.stock_list[env.stock_i]))
 
     # Stock Statistics and Preformance
     f.write("Last Balance,Environment Change,Agent Portfolio Change\n")
     for e in history:
-        f.write(f"{e[0]},{e[1]},{e[2]}\n")
+        f.write(f"{e[0]},{e[1]},{e[2]}, {e[3]}\n")
         
 
