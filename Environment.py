@@ -2,8 +2,10 @@ import pandas as pd
 import random
 import os
 
+TRAIN = True
+
 class Environment:
-    data_dir = "./Data/sandp500/individual_stocks_5yr/Train/"
+    data_dir = "./Data/sandp500/individual_stocks_5yr/Train/" if TRAIN else "./Data/sandp500/individual_stocks_5yr/Test/"
     days = 30
     portfolio = {
         "shares": 0,

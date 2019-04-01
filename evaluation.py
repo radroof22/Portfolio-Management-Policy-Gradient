@@ -6,19 +6,19 @@ from regular_policy import Agent, select_action, format_action
 env = Environment()
 
 # CONSTANTS
-MODEL_PATH = "models/regular/model_proper_portfolio_value.pt"
-N_TESTS = 25
+MODEL_PATH = "models/regular/model_BUFFET_WATERS.pt"
+N_TESTS = 125
 
 agent = Agent().cuda()
 agent.load_state_dict(torch.load(MODEL_PATH))   
 
-f = open("models/tests/sharpe_analysis_final.csv", "w")
+f = open("models/tests/BUFFET_WATERS_final.csv", "w")
 
 if __name__ == "__main__":
     history = []
     
     for episode in range(N_TESTS):
-        print("Episode {}".format(episode))
+        
         state = env.reset() # Reset environment and record the starting state
         episode_actions = {
             "hold": 0,
@@ -40,9 +40,11 @@ if __name__ == "__main__":
         env_change = env.net_change()
         cash_change = (reward - 100000 ) / 100000
         history.append((reward, env_change, cash_change, env.stock_list[env.stock_i]))
+        
+        print("Episode {} \t {}".format(episode+1, reward))
 
     # Stock Statistics and Preformance
-    f.write("Last Balance,Environment Change,Agent Portfolio Change\n")
+    f.write("Last Balance,Environment Change,Agent Portfolio Change, Stock Name\n")
     for e in history:
         f.write(f"{e[0]},{e[1]},{e[2]}, {e[3]}\n")
         
