@@ -3,13 +3,14 @@ import random
 import os
 
 class Environment:
-    data_dir = "./Data/sandp500/individual_stocks_5yr/Eval/"
+    data_dir = "./Data/sandp500/individual_stocks_5yr/Train/"
     days = 30
     portfolio = {
         "shares": 0,
         "balance": 100000,
     }
     stock_i = 0
+    TRANSACTION_FEE = 7
 
     def __init__(self):
         self.stock_list = [s for s in os.walk(self.data_dir)][0][2]
@@ -27,11 +28,11 @@ class Environment:
         """
         try:
             # print(self.stock_list[self.stock_i])
-            self.df = pd.read_csv(self.data_dir + self.stock_list[self.stock_i]).drop(["Date", "Name"], axis=1).dropna()
+            self.df = pd.read_csv(self.data_dir + self.stock_list[self.stock_i]).drop(["date", "Name"], axis=1).dropna()
         except IndexError:
             print("Reset Stock List")
             self.stock_i=0
-            self.df = pd.read_csv(self.data_dir + self.stock_list[self.stock_i]).drop(["Date", "Name"], axis=1).dropna()
+            self.df = pd.read_csv(self.data_dir + self.stock_list[self.stock_i]).drop(["date", "Name"], axis=1).dropna()
         self.i = 0
         state, _ = self._get_state()
         self.portfolio = {
@@ -67,12 +68,15 @@ class Environment:
         if action["buy"] != 0:
             # Buy some shares
             reward = self._buy(action["buy"])
-            
         elif action["sell"] != 0:
             # Buy some shares
             reward = self._sell(action["sell"])
         else:
             reward = self.calc_reward()
+
+        # Transaction fee implemented
+        if action["sell"] != 0 or action["buy"] != 0:
+            self.portfolio["balance"] -= self.TRANSACTION_FEE
         
         state, done = self._get_state()
         # print("BALANCE: %s" % self.portfolio["balance"])
@@ -116,14 +120,14 @@ class Environment:
             This will be negative because of how you pay money to buy stock
         """
         
-        curr_price = self._get_state(move_day=False)[0].iloc[-1]["Close"]
+        action_price = self.df.iloc[self.i+1]["open"]
         # Check that the total amount of money needed to buy is less 
         # than the amount of money available to the person
-        if curr_price * n_shares > self.portfolio["balance"]: return 0
+        if action_price * n_shares > self.portfolio["balance"]: return 0
 
         # Deduct and Update portfolio
         self.portfolio["shares"] += n_shares
-        self.portfolio["balance"] -= curr_price * n_shares
+        self.portfolio["balance"] -= action_price * n_shares
         
         return self.calc_reward() 
 
@@ -147,11 +151,11 @@ class Environment:
         # is actually owned by the agent
         if n_shares > self.portfolio["shares"]: return 0
         
-        curr_price = self._get_state(move_day=False)[0].iloc[-1]["Close"]
+        action_price = self.df.iloc[self.i+1]["open"]
 
         # Deduct and Update portfolio
         self.portfolio["shares"] -= n_shares
-        self.portfolio["balance"] += curr_price * n_shares
+        self.portfolio["balance"] += action_price * n_shares
 
         return  self.calc_reward() 
 
@@ -162,10 +166,10 @@ class Environment:
         Returns:
         - Reward: int
         """
-        return self.portfolio["balance"] + self.portfolio["shares"] * self._get_state(move_day=False)[0].iloc[-1]["Close"]
+        return self.portfolio["balance"] + self.portfolio["shares"] * self._get_state(move_day=False)[0].iloc[-1]["close"]
     
     def net_change(self):
-        return (self.df.iloc[-1]["Close"] - self.df.iloc[0]["Close"]) / self.df.iloc[-1]["Close"]
+        return (self.df.iloc[-1]["close"] - self.df.iloc[0]["close"]) / self.df.iloc[-1]["close"]
 
     def get_df(self):
         """

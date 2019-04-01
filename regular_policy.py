@@ -1,6 +1,6 @@
 LOAD = True
-OUTPUT_PATH = "models/regular/model_INC.pt" # _500Cash
-record_file = "models/regular/rewards_INC.csv"
+OUTPUT_PATH = "models/regular/model_BUFFET_WATERS.pt" # _500Cash
+record_file = "models/regular/rewards_BUFFET_WATERS.csv"
 eps=1e-10
 
 import torch
