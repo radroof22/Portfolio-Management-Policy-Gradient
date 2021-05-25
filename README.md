@@ -1,6 +1,9 @@
 # Portfolio Management Policy Gradient
 The goal of this project was to see how effective a reinforcement learning type training model would be for financial management. Normal models rely on linear regression and predictions of the next price of a stock. Instead, this project sought to determine if policy gradient, a type of reinforcement model, may be effective for portfolio management.
 
+## Awards
+* 3rd Place at Delware Valley Science Fair for Computer Science in 10th Grade Division
+
 ## Technology Overview
 - **Pytorch** for developing the policy gradient neural network
 - **Pandas** for dataframe manipulation of S&P 500
